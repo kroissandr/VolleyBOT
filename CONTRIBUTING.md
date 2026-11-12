@@ -93,6 +93,8 @@ BREAKING CHANGE: field `state` is renamed to `status` in GET /games
 
 ## Принцип минимального полного изменения
 
+Используем проектный скилл [`$ponytail`](.agents/skills/ponytail/SKILL.md) в режиме `full` (по умолчанию). Версия скилла зафиксирована по [коммиту `96608e0`](https://github.com/DietrichGebert/ponytail/tree/96608e078b2d5ea607c5c3b8b5a54d1c1fba6846/skills/ponytail).
+
 Ленивый дизайн при полном объёме задачи.
 
 1. **Перед изменением** найти всё, чего оно касается: вызовы, тесты, фикстуры, конфиги, документацию.
@@ -114,6 +116,14 @@ BREAKING CHANGE: field `state` is renamed to `status` in GET /games
 8. **Не урезается никогда:** валидация на границах доверия, обработка ошибок, ведущих к потере данных, безопасность, доступность, явные требования этапа.
 
 Комментарии в коде объясняют только «почему», которое не видно из кода, одной строкой.
+
+## Скиллы Мэтта Покока
+
+- [`$grill-with-docs`](.agents/skills/grill-with-docs/SKILL.md) — обсуждение проектных решений с записью в глоссарий и ADR. Использует [`$grilling`](.agents/skills/grilling/SKILL.md) и [`$domain-modeling`](.agents/skills/domain-modeling/SKILL.md).
+- [`$codebase-design`](.agents/skills/codebase-design/SKILL.md) — проектирование интерфейсов модулей.
+- [`$tdd`](.agents/skills/tdd/SKILL.md) — разработка через тесты поведения на публичных интерфейсах.
+
+Скиллы зафиксированы по [коммиту `4ae2317`](https://github.com/mattpocock/skills/tree/4ae2317ddb22b046e26455e4f9c9b3aaaf62212d/skills). [Лицензия MIT](.agents/skills/LICENSE.mattpocock).
 
 ## Защита веток
 
