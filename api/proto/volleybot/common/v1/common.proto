@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package volleybot.common.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/kroissandr/VolleyBOT/gen/go/volleybot/common/v1;commonv1";
+
+message PageRequest {
+  optional uint32 limit = 1;
+  string cursor = 2;
+}
+
+message PageInfo {
+  // Empty when there is no next page.
+  string next_cursor = 1;
+}
+
+// Sent as a detail of google.rpc.Status alongside the canonical gRPC code.
+message ErrorDetail {
+  string code = 1;
+  repeated FieldViolation violations = 2;
+  repeated HallConflict conflicts = 3;
+  google.protobuf.Timestamp registration_opens_at = 4;
+  BanInfo ban = 5;
+}
+
+message FieldViolation {
+  string field = 1;
+  string message = 2;
+}
+
+message HallConflict {
+  string game_id = 1;
+  string hall_id = 2;
+  google.protobuf.Timestamp starts_at = 3;
+  google.protobuf.Timestamp ends_at = 4;
+}
+
+message BanInfo {
+  string reason = 1;
+  // Absent for an indefinite ban.
+  google.protobuf.Timestamp ends_at = 2;
+}

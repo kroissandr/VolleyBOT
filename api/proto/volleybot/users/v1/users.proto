@@ -1,0 +1,138 @@
+syntax = "proto3";
+
+package volleybot.users.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "volleybot/common/v1/common.proto";
+
+option go_package = "github.com/kroissandr/VolleyBOT/gen/go/volleybot/users/v1;usersv1";
+
+// Used by games to authorize operations and obtain team-balancing inputs.
+service UserDirectoryService {
+  rpc GetAccessState(GetAccessStateRequest) returns (GetAccessStateResponse);
+  rpc ListPlayerProfiles(ListPlayerProfilesRequest) returns (ListPlayerProfilesResponse);
+}
+
+// Used by the Telegram adapter.
+service TelegramAccountsService {
+  rpc ResolveTelegramAccount(ResolveTelegramAccountRequest) returns (ResolveTelegramAccountResponse);
+  rpc LinkTelegramAccount(LinkTelegramAccountRequest) returns (LinkTelegramAccountResponse);
+  rpc UnlinkTelegramAccount(TelegramAccountRequest) returns (google.protobuf.Empty);
+  rpc GetNotificationSettings(TelegramAccountRequest) returns (NotificationSettings);
+  rpc UpdateNotificationSettings(UpdateNotificationSettingsRequest) returns (NotificationSettings);
+  rpc GetNotificationDestination(GetNotificationDestinationRequest) returns (NotificationDestination);
+}
+
+// Used by games when the discipline rule triggers. users owns the ban.
+service AutomatedBansService {
+  rpc ApplyAutoBan(ApplyAutoBanRequest) returns (ApplyAutoBanResponse);
+}
+
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_USER = 1;
+  ROLE_MODERATOR = 2;
+  ROLE_ADMIN = 3;
+}
+
+enum SkillLevel {
+  SKILL_LEVEL_UNSPECIFIED = 0;
+  SKILL_LEVEL_BEGINNER = 1;
+  SKILL_LEVEL_INTERMEDIATE = 2;
+  SKILL_LEVEL_ADVANCED = 3;
+}
+
+enum PlayerPosition {
+  PLAYER_POSITION_UNSPECIFIED = 0;
+  PLAYER_POSITION_SETTER = 1;
+  PLAYER_POSITION_OUTSIDE_HITTER = 2;
+  PLAYER_POSITION_MIDDLE_BLOCKER = 3;
+  PLAYER_POSITION_OPPOSITE = 4;
+  PLAYER_POSITION_LIBERO = 5;
+}
+
+message GetAccessStateRequest {
+  string user_id = 1;
+}
+
+message GetAccessStateResponse {
+  Role role = 1;
+  // Present only while the user is banned.
+  volleybot.common.v1.BanInfo active_ban = 2;
+  optional string active_ban_id = 3;
+}
+
+message ListPlayerProfilesRequest {
+  // Results include existing users even if they have yet to fill out a profile.
+  repeated string user_ids = 1;
+}
+
+message ListPlayerProfilesResponse {
+  repeated PlayerProfile profiles = 1;
+}
+
+message PlayerProfile {
+  string user_id = 1;
+  // Public fallback for an unfinished profile, never an email address.
+  string display_name = 2;
+  uint32 experience_years = 3;
+  // Unspecified if the player has not entered a skill level.
+  SkillLevel skill_level = 4;
+  PlayerPosition position = 5;
+}
+
+message ResolveTelegramAccountRequest {
+  int64 chat_id = 1;
+}
+
+message ResolveTelegramAccountResponse {
+  // Absent for a guest.
+  optional string user_id = 1;
+}
+
+message LinkTelegramAccountRequest {
+  int64 chat_id = 1;
+  string token = 2;
+}
+
+message LinkTelegramAccountResponse {
+  string user_id = 1;
+}
+
+message TelegramAccountRequest {
+  int64 chat_id = 1;
+}
+
+message UpdateNotificationSettingsRequest {
+  int64 chat_id = 1;
+  NotificationSettings settings = 2;
+}
+
+message GetNotificationDestinationRequest {
+  string user_id = 1;
+}
+
+message NotificationDestination {
+  // Absent when there is no linked Telegram account.
+  optional int64 chat_id = 1;
+  NotificationSettings settings = 2;
+}
+
+message NotificationSettings {
+  bool telegram_enabled = 1;
+  repeated string disabled_notification_types = 2;
+}
+
+message ApplyAutoBanRequest {
+  string user_id = 1;
+  // Stable identifier for this user's discipline window.
+  string discipline_window_id = 2;
+  google.protobuf.Timestamp ends_at = 3;
+  string reason = 4;
+}
+
+message ApplyAutoBanResponse {
+  // Present for a new ban or a repeated accepted request for the same window.
+  optional string ban_id = 1;
+}

@@ -1,0 +1,167 @@
+syntax = "proto3";
+
+package volleybot.games.v1;
+
+import "google/protobuf/timestamp.proto";
+import "volleybot/common/v1/common.proto";
+
+option go_package = "github.com/kroissandr/VolleyBOT/gen/go/volleybot/games/v1;gamesv1";
+
+// Shared behavior of the Telegram and REST adapters.
+service PlayerGamesService {
+  rpc ListUpcomingGames(ListUpcomingGamesRequest) returns (ListUpcomingGamesResponse);
+  rpc RegisterForGame(GameRegistrationRequest) returns (Registration);
+  rpc CancelRegistration(CancelRegistrationRequest) returns (Registration);
+  rpc ListMyRegistrations(ListMyRegistrationsRequest) returns (ListMyRegistrationsResponse);
+  rpc GetMyDiscipline(GetMyDisciplineRequest) returns (DisciplineSummary);
+}
+
+// Used by the notification planner in telegram.
+service GameRemindersService {
+  rpc ListReminderCandidates(ListReminderCandidatesRequest) returns (ListReminderCandidatesResponse);
+  rpc GetReminderCandidate(GetReminderCandidateRequest) returns (ReminderCandidate);
+}
+
+enum GameStatus {
+  GAME_STATUS_UNSPECIFIED = 0;
+  GAME_STATUS_SCHEDULED = 1;
+  GAME_STATUS_IN_PROGRESS = 2;
+  GAME_STATUS_FINISHED = 3;
+  GAME_STATUS_CANCELLED = 4;
+}
+
+enum RegistrationStatus {
+  REGISTRATION_STATUS_UNSPECIFIED = 0;
+  REGISTRATION_STATUS_ACTIVE = 1;
+  REGISTRATION_STATUS_CANCELLED = 2;
+  REGISTRATION_STATUS_ATTENDED = 3;
+  REGISTRATION_STATUS_NO_SHOW = 4;
+}
+
+enum Roster {
+  ROSTER_UNSPECIFIED = 0;
+  ROSTER_MAIN = 1;
+  ROSTER_WAITLIST = 2;
+}
+
+enum CancellationReason {
+  CANCELLATION_REASON_UNSPECIFIED = 0;
+  CANCELLATION_REASON_SELF = 1;
+  CANCELLATION_REASON_BAN = 2;
+  CANCELLATION_REASON_GAME_CANCELLED = 3;
+}
+
+message ListUpcomingGamesRequest {
+  volleybot.common.v1.PageRequest page = 1;
+}
+
+message ListUpcomingGamesResponse {
+  repeated GameSummary items = 1;
+  volleybot.common.v1.PageInfo page = 2;
+}
+
+message GameSummary {
+  string game_id = 1;
+  string title = 2;
+  string format = 3;
+  string hall_id = 4;
+  string hall_name = 5;
+  google.protobuf.Timestamp starts_at = 6;
+  google.protobuf.Timestamp ends_at = 7;
+  google.protobuf.Timestamp registration_opens_at = 8;
+  GameStatus status = 9;
+  uint32 main_limit = 10;
+  uint32 main_count = 11;
+  uint32 waitlist_count = 12;
+  int64 price_kopecks = 13;
+}
+
+message GameRegistrationRequest {
+  string game_id = 1;
+  // Resolved by telegram from chat_id on the trusted internal channel.
+  string user_id = 2;
+}
+
+message CancelRegistrationRequest {
+  string game_id = 1;
+  string user_id = 2;
+  string registration_id = 3;
+}
+
+message Registration {
+  string registration_id = 1;
+  string game_id = 2;
+  string user_id = 3;
+  RegistrationStatus status = 4;
+  // Present for active registrations.
+  optional Roster roster = 5;
+  // One-based position, present while in the active waitlist.
+  optional uint32 waitlist_position = 6;
+  optional CancellationReason cancellation_reason = 7;
+  optional bool late_cancel = 8;
+}
+
+message ListMyRegistrationsRequest {
+  string user_id = 1;
+  volleybot.common.v1.PageRequest page = 2;
+}
+
+message ListMyRegistrationsResponse {
+  repeated MyRegistration items = 1;
+  volleybot.common.v1.PageInfo page = 2;
+}
+
+message MyRegistration {
+  GameSummary game = 1;
+  Registration registration = 2;
+  MyTeam team = 3;
+}
+
+message MyTeam {
+  uint32 assignment_version = 1;
+  uint32 team_number = 2;
+  bool stale = 3;
+  repeated TeamPlayer players = 4;
+}
+
+message TeamPlayer {
+  string user_id = 1;
+  string display_name = 2;
+  bool substitute = 3;
+}
+
+message GetMyDisciplineRequest {
+  string user_id = 1;
+}
+
+message DisciplineSummary {
+  google.protobuf.Timestamp window_starts_at = 1;
+  google.protobuf.Timestamp window_ends_at = 2;
+  uint32 attended_count = 3;
+  uint32 no_show_count = 4;
+  uint32 late_cancel_count = 5;
+}
+
+message ListReminderCandidatesRequest {
+  // Half-open interval of game start times, [starts_from, starts_before).
+  google.protobuf.Timestamp starts_from = 1;
+  google.protobuf.Timestamp starts_before = 2;
+  volleybot.common.v1.PageRequest page = 3;
+}
+
+message ListReminderCandidatesResponse {
+  repeated ReminderCandidate items = 1;
+  volleybot.common.v1.PageInfo page = 2;
+}
+
+// Returns NOT_FOUND if the registration is outside the current main roster
+// or if the game is no longer upcoming.
+message GetReminderCandidateRequest {
+  string registration_id = 1;
+}
+
+message ReminderCandidate {
+  GameSummary game = 1;
+  string user_id = 2;
+  string registration_id = 3;
+}

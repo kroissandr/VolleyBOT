@@ -28,7 +28,7 @@
 | 01 | `docs/01-process` | Процесс разработки: ветки, коммиты, PR, DoD, защита веток | ✅ |
 | 02 | `docs/02-domain` | [Глоссарий, сущности и инварианты, жизненные циклы, сценарии по ролям](docs/domain.md) | ✅ |
 | 03 | `docs/03-architecture` | [Сервисы и границы, схема взаимодействий, ADR](docs/architecture.md) | ✅ |
-| 04 | `docs/04-contracts` | OpenAPI, proto, формат ошибок, пагинация, каталог событий Kafka | |
+| 04 | `docs/04-contracts` | [OpenAPI, proto, формат ошибок, пагинация, каталог событий Kafka](docs/contracts.md) | ✅ |
 | 05 | `docs/05-data` | ER-схемы, стратегия миграций, план фикстур | |
 | **B** | **Фундамент** | | |
 | 06 | `chore/06-skeleton` | Монорепо, docker-compose, Makefile, линтер, CI, шаблон сервиса | |

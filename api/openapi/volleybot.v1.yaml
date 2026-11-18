@@ -1,0 +1,1710 @@
+openapi: "3.1.1"
+info:
+  title: "VolleyBOT REST API"
+  version: "1.0.0"
+  description: "Контракт по этапам дорожной карты. x-stage указывает этап появления операции. x-access задаёт минимальную роль; правила владения ресурсами указаны в описании операций."
+servers:
+  - {url: "/api/v1"}
+tags:
+  - {name: "users", description: "Аккаунты, сессии, роли, баны и настройки."}
+  - {name: "games", description: "Площадки, игры, серии, записи, составы и явка."}
+security:
+  - BearerAuth: []
+paths:
+
+  "/auth/register":
+    post:
+      tags: ["users"]
+      summary: "Зарегистрировать аккаунт"
+      description: "Создаёт пользователя с ролью user. Администратор назначается через CLI."
+      operationId: "registerAccount"
+      x-stage: "08"
+      x-access: "public"
+      security: []
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: {$ref: "#/components/schemas/SignUp"}
+      responses:
+        "201":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Account"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "409": {$ref: "#/components/responses/Error409"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/auth/login":
+    post:
+      tags: ["users"]
+      summary: "Получить токены"
+      operationId: "login"
+      x-stage: "08"
+      x-access: "public"
+      security: []
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: {$ref: "#/components/schemas/Credentials"}
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Session"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/auth/refresh":
+    post:
+      tags: ["users"]
+      summary: "Обновить сессию с ротацией refresh-токена"
+      description: "Повторное предъявление использованного refresh-токена отзывает refresh-токены пользователя."
+      operationId: "refreshSession"
+      x-stage: "08"
+      x-access: "public"
+      security: []
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: {$ref: "#/components/schemas/RefreshToken"}
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Session"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/auth/logout":
+    post:
+      tags: ["users"]
+      summary: "Отозвать refresh-токен"
+      description: "Повторный запрос с уже отозванным токеном даёт тот же результат."
+      operationId: "logout"
+      x-stage: "08"
+      x-access: "public"
+      security: []
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: {$ref: "#/components/schemas/RefreshToken"}
+      responses:
+        "204": {description: "Операция выполнена."}
+        "400": {$ref: "#/components/responses/Error400"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/me":
+    get:
+      tags: ["users"]
+      summary: "Получить свой аккаунт"
+      description: "Доступен при активном бане для просмотра причины и срока."
+      operationId: "getMyAccount"
+      x-stage: "09"
+      x-access: "user"
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Account"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/me/profile":
+    patch:
+      tags: ["users"]
+      summary: "Изменить свой профиль"
+      description: "При первом заполнении обязательны first_name, last_name, birth_date, height_cm и skill_level. experience_years по умолчанию равен 0. Для существующего профиля поля, которых нет в запросе, сохраняются. Null в position очищает амплуа."
+      operationId: "updateMyProfile"
+      x-stage: "09"
+      x-access: "user"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: {$ref: "#/components/schemas/ProfileUpdate"}
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Profile"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/users/{user_id}/role":
+    parameters:
+      - name: "user_id"
+        in: "path"
+        required: true
+        schema: {$ref: "#/components/schemas/ID"}
+    put:
+      tags: ["users"]
+      summary: "Назначить или снять роль модератора"
+      description: "Роль администратора защищена от изменений через API."
+      operationId: "assignUserRole"
+      x-stage: "09"
+      x-access: "admin"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: {$ref: "#/components/schemas/AssignRole"}
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Account"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "409": {$ref: "#/components/responses/Error409"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/users/{user_id}/ban":
+    parameters:
+      - name: "user_id"
+        in: "path"
+        required: true
+        schema: {$ref: "#/components/schemas/ID"}
+    put:
+      tags: ["users"]
+      summary: "Установить или заменить бан"
+      description: "Модератор может банить только пользователей с ролью user. Администратор может банить пользователей и модераторов. Null в ends_at означает бессрочный бан."
+      operationId: "banUser"
+      x-stage: "09"
+      x-access: "moderator"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: {$ref: "#/components/schemas/BanRequest"}
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Ban"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+    delete:
+      tags: ["users"]
+      summary: "Снять бан"
+      description: "Правила по ролям совпадают с установкой бана. При отсутствии активного бана возвращает 204."
+      operationId: "liftUserBan"
+      x-stage: "09"
+      x-access: "moderator"
+      responses:
+        "204": {description: "Операция выполнена."}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/me/telegram/link":
+    post:
+      tags: ["users"]
+      summary: "Получить одноразовую ссылку на привязку Telegram"
+      description: "Токен действует 10 минут и передаётся боту при открытии ссылки."
+      operationId: "createTelegramLink"
+      x-stage: "16"
+      x-access: "user"
+      responses:
+        "201":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/TelegramLink"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "409": {$ref: "#/components/responses/Error409"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/me/telegram":
+    delete:
+      tags: ["users"]
+      summary: "Отвязать свой Telegram"
+      operationId: "unlinkMyTelegram"
+      x-stage: "16"
+      x-access: "user"
+      responses:
+        "204": {description: "Операция выполнена."}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/me/notification-settings":
+    get:
+      tags: ["users"]
+      summary: "Получить настройки уведомлений"
+      operationId: "getMyNotificationSettings"
+      x-stage: "16"
+      x-access: "user"
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/NotificationSettings"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+    put:
+      tags: ["users"]
+      summary: "Заменить настройки уведомлений"
+      operationId: "replaceMyNotificationSettings"
+      x-stage: "16"
+      x-access: "user"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: {$ref: "#/components/schemas/NotificationSettings"}
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/NotificationSettings"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/venues":
+    get:
+      tags: ["games"]
+      summary: "Посмотреть площадки"
+      operationId: "listVenues"
+      x-stage: "10"
+      x-access: "moderator"
+      parameters:
+        - {$ref: "#/components/parameters/Limit"}
+        - {$ref: "#/components/parameters/Cursor"}
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/VenuePage"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+    post:
+      tags: ["games"]
+      summary: "Создать площадку с первым залом"
+      operationId: "createVenue"
+      x-stage: "10"
+      x-access: "admin"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: {$ref: "#/components/schemas/CreateVenue"}
+      responses:
+        "201":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Venue"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/venues/{venue_id}":
+    parameters:
+      - name: "venue_id"
+        in: "path"
+        required: true
+        schema: {$ref: "#/components/schemas/ID"}
+    put:
+      tags: ["games"]
+      summary: "Изменить площадку"
+      operationId: "updateVenue"
+      x-stage: "10"
+      x-access: "admin"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: {$ref: "#/components/schemas/VenueData"}
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Venue"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+    delete:
+      tags: ["games"]
+      summary: "Удалить площадку"
+      description: "Сервисы сохраняют историю игр. Удаление возможно, если ни у одного зала площадки нет игр."
+      operationId: "deleteVenue"
+      x-stage: "10"
+      x-access: "admin"
+      responses:
+        "204": {description: "Операция выполнена."}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "409": {$ref: "#/components/responses/Error409"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/venues/{venue_id}/halls":
+    parameters:
+      - name: "venue_id"
+        in: "path"
+        required: true
+        schema: {$ref: "#/components/schemas/ID"}
+    get:
+      tags: ["games"]
+      summary: "Посмотреть залы площадки"
+      operationId: "listVenueHalls"
+      x-stage: "10"
+      x-access: "moderator"
+      parameters:
+        - {$ref: "#/components/parameters/Limit"}
+        - {$ref: "#/components/parameters/Cursor"}
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/HallPage"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+    post:
+      tags: ["games"]
+      summary: "Добавить зал на площадку"
+      operationId: "createHall"
+      x-stage: "10"
+      x-access: "admin"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: {$ref: "#/components/schemas/HallData"}
+      responses:
+        "201":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Hall"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "409": {$ref: "#/components/responses/Error409"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/halls/{hall_id}":
+    parameters:
+      - name: "hall_id"
+        in: "path"
+        required: true
+        schema: {$ref: "#/components/schemas/ID"}
+    put:
+      tags: ["games"]
+      summary: "Изменить название зала"
+      operationId: "updateHall"
+      x-stage: "10"
+      x-access: "admin"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: {$ref: "#/components/schemas/HallData"}
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Hall"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "409": {$ref: "#/components/responses/Error409"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+    delete:
+      tags: ["games"]
+      summary: "Удалить зал"
+      description: "Последний зал площадки и зал с играми защищены от удаления."
+      operationId: "deleteHall"
+      x-stage: "10"
+      x-access: "admin"
+      responses:
+        "204": {description: "Операция выполнена."}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "409": {$ref: "#/components/responses/Error409"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/game-formats":
+    get:
+      tags: ["games"]
+      summary: "Получить справочник форматов игр"
+      operationId: "listGameFormats"
+      x-stage: "11"
+      x-access: "public"
+      security: []
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema:
+                type: "array"
+                items: {$ref: "#/components/schemas/GameFormatInfo"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/games":
+    get:
+      tags: ["games"]
+      summary: "Посмотреть игры и число записавшихся"
+      description: "По умолчанию выдаёт предстоящие игры. Ответ содержит числа участников и листа ожидания. Гость также может запросить предстоящие игры через бота."
+      operationId: "listGames"
+      x-stage: "11"
+      x-access: "public"
+      security: []
+      parameters:
+        - {$ref: "#/components/parameters/Limit"}
+        - {$ref: "#/components/parameters/Cursor"}
+        - name: "starts_from"
+          in: "query"
+          schema: {type: "string", format: "date-time"}
+          description: "Нижняя граница времени начала включительно. По умолчанию момент первого запроса."
+        - name: "starts_before"
+          in: "query"
+          schema: {type: "string", format: "date-time"}
+          description: "Верхняя граница времени начала исключительно."
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/GamePage"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+    post:
+      tags: ["games"]
+      summary: "Создать разовую игру"
+      description: "Владельцем становится автор. Без registration_opens_at запись открывается сразу."
+      operationId: "createGame"
+      x-stage: "11"
+      x-access: "moderator"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: {$ref: "#/components/schemas/GameCreate"}
+      responses:
+        "201":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Game"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "409": {$ref: "#/components/responses/Error409"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/games/{game_id}":
+    parameters:
+      - name: "game_id"
+        in: "path"
+        required: true
+        schema: {$ref: "#/components/schemas/ID"}
+    get:
+      tags: ["games"]
+      summary: "Посмотреть игру и число записавшихся"
+      operationId: "getGame"
+      x-stage: "11"
+      x-access: "public"
+      security: []
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/GameDetails"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+    patch:
+      tags: ["games"]
+      summary: "Изменить одну игру"
+      description: "Модератор может изменять свои игры, администратор — любые. Для экземпляра серии меняется только выбранная игра."
+      operationId: "updateGame"
+      x-stage: "11"
+      x-access: "moderator"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: {$ref: "#/components/schemas/GameUpdate"}
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Game"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "409": {$ref: "#/components/responses/Error409"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+    delete:
+      tags: ["games"]
+      summary: "Удалить свою игру"
+      description: "Администратор может удалить любую игру. Удаляется игра без активных записей или отменённая игра."
+      operationId: "deleteGame"
+      x-stage: "11"
+      x-access: "moderator"
+      responses:
+        "204": {description: "Операция выполнена."}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "409": {$ref: "#/components/responses/Error409"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/games/{game_id}/cancellation":
+    parameters:
+      - name: "game_id"
+        in: "path"
+        required: true
+        schema: {$ref: "#/components/schemas/ID"}
+    put:
+      tags: ["games"]
+      summary: "Отменить игру"
+      description: "Модератор может отменять свои игры, администратор — любые. Повторный запрос возвращает ранее отменённую игру."
+      operationId: "cancelGame"
+      x-stage: "11"
+      x-access: "moderator"
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Game"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "409": {$ref: "#/components/responses/Error409"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/series":
+    get:
+      tags: ["games"]
+      summary: "Посмотреть серии"
+      description: "Модератор видит свои серии, администратор — все."
+      operationId: "listSeries"
+      x-stage: "12"
+      x-access: "moderator"
+      parameters:
+        - {$ref: "#/components/parameters/Limit"}
+        - {$ref: "#/components/parameters/Cursor"}
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/SeriesPage"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+    post:
+      tags: ["games"]
+      summary: "Создать еженедельную серию игр"
+      description: "Время первой игры задаёт местное время повторений в time_zone. Без end серия бессрочна."
+      operationId: "createSeries"
+      x-stage: "12"
+      x-access: "moderator"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: {$ref: "#/components/schemas/SeriesCreate"}
+      responses:
+        "201":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Series"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "409": {$ref: "#/components/responses/Error409"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/series/{series_id}":
+    parameters:
+      - name: "series_id"
+        in: "path"
+        required: true
+        schema: {$ref: "#/components/schemas/ID"}
+    get:
+      tags: ["games"]
+      summary: "Посмотреть серию"
+      description: "Доступно владельцу-модератору и администратору."
+      operationId: "getSeries"
+      x-stage: "12"
+      x-access: "moderator"
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Series"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/series/{series_id}/split/{game_id}":
+    parameters:
+      - name: "series_id"
+        in: "path"
+        required: true
+        schema: {$ref: "#/components/schemas/ID"}
+      - name: "game_id"
+        in: "path"
+        required: true
+        schema: {$ref: "#/components/schemas/ID"}
+    post:
+      tags: ["games"]
+      summary: "Изменить выбранную игру серии и следующие за ней"
+      description: "Доступно владельцу-модератору и администратору. Параметры новой серии наследуются с учётом переданных полей. Null в end делает её бессрочной. Конфликт отклоняет изменение целиком."
+      operationId: "splitSeries"
+      x-stage: "12"
+      x-access: "moderator"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: {$ref: "#/components/schemas/SeriesSplit"}
+      responses:
+        "201":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Series"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "409": {$ref: "#/components/responses/Error409"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/series/{series_id}/cancellation":
+    parameters:
+      - name: "series_id"
+        in: "path"
+        required: true
+        schema: {$ref: "#/components/schemas/ID"}
+    put:
+      tags: ["games"]
+      summary: "Отменить серию и её будущие игры"
+      description: "Доступно владельцу-модератору и администратору."
+      operationId: "cancelSeries"
+      x-stage: "12"
+      x-access: "moderator"
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Series"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "409": {$ref: "#/components/responses/Error409"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/games/my-registrations":
+    get:
+      tags: ["games"]
+      summary: "Посмотреть свои записи"
+      description: "Возвращает историю и предстоящие игры с текущим состоянием записи, а с этапа 14 — также свою команду, если она опубликована."
+      operationId: "listMyRegistrations"
+      x-stage: "13"
+      x-access: "user"
+      parameters:
+        - {$ref: "#/components/parameters/Limit"}
+        - {$ref: "#/components/parameters/Cursor"}
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/MyRegistrationPage"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/games/{game_id}/my-registration":
+    parameters:
+      - name: "game_id"
+        in: "path"
+        required: true
+        schema: {$ref: "#/components/schemas/ID"}
+    put:
+      tags: ["games"]
+      summary: "Записаться на игру"
+      description: "Игрок берётся из сессии. Создание даёт 201, повтор уже активной записи даёт 200 с текущей позицией. Новая запись доступна после открытия регистрации и до начала игры. Защищённые операции проверяют актуальный бан."
+      operationId: "registerForGame"
+      x-stage: "13"
+      x-access: "user"
+      responses:
+        "200":
+          description: "Активная запись уже существует."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Registration"}
+        "201":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Registration"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "409": {$ref: "#/components/responses/Error409"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/games/{game_id}/registrations":
+    parameters:
+      - name: "game_id"
+        in: "path"
+        required: true
+        schema: {$ref: "#/components/schemas/ID"}
+    get:
+      tags: ["games"]
+      summary: "Посмотреть записи и имена игроков"
+      description: "Доступно владельцу-модератору и администратору. Включает записи основного состава и листа ожидания."
+      operationId: "listGameRegistrations"
+      x-stage: "13"
+      x-access: "moderator"
+      parameters:
+        - {$ref: "#/components/parameters/Limit"}
+        - {$ref: "#/components/parameters/Cursor"}
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/RosterPage"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/games/{game_id}/team-assignment":
+    parameters:
+      - name: "game_id"
+        in: "path"
+        required: true
+        schema: {$ref: "#/components/schemas/ID"}
+    get:
+      tags: ["games"]
+      summary: "Посмотреть последнюю опубликованную версию составов"
+      description: "Доступно владельцу-модератору и администратору."
+      operationId: "getTeamAssignment"
+      x-stage: "14"
+      x-access: "moderator"
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/TeamAssignment"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+    post:
+      tags: ["games"]
+      summary: "Перемешать основной состав и создать версию"
+      description: "Доступно владельцу-модератору и администратору. Каждый успешный вызов создаёт новую версию."
+      operationId: "shuffleTeams"
+      x-stage: "14"
+      x-access: "moderator"
+      responses:
+        "201":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/TeamAssignment"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "409": {$ref: "#/components/responses/Error409"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/games/{game_id}/registrations/{registration_id}/attendance":
+    parameters:
+      - name: "game_id"
+        in: "path"
+        required: true
+        schema: {$ref: "#/components/schemas/ID"}
+      - name: "registration_id"
+        in: "path"
+        required: true
+        schema: {$ref: "#/components/schemas/ID"}
+    put:
+      tags: ["games"]
+      summary: "Установить или исправить явку"
+      description: "Доступно владельцу-модератору и администратору с начала игры. Правило действует только для записей основного состава. При present=false до окончания игры явка снимается, а неявка определяется после окончания. Исправления доступны до истечения семи суток после окончания."
+      operationId: "markAttendance"
+      x-stage: "18"
+      x-access: "moderator"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema: {$ref: "#/components/schemas/Attendance"}
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Registration"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "409": {$ref: "#/components/responses/Error409"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/games/my-discipline":
+    get:
+      tags: ["games"]
+      summary: "Посмотреть свою статистику дисциплины"
+      description: "Доступно при активном бане."
+      operationId: "getMyDiscipline"
+      x-stage: "18"
+      x-access: "user"
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/DisciplineSummary"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+
+  "/games/{game_id}/my-registrations/{registration_id}":
+    parameters:
+      - name: "game_id"
+        in: "path"
+        required: true
+        schema: {$ref: "#/components/schemas/ID"}
+      - name: "registration_id"
+        in: "path"
+        required: true
+        schema: {$ref: "#/components/schemas/ID"}
+    delete:
+      tags: ["games"]
+      summary: "Отменить свою запись"
+      description: "Отменяет запись из пути до начала игры. Доступно владельцу записи. Повтор самоотмены возвращает сохранённый результат и сохраняет последующие записи игрока на эту игру."
+      operationId: "cancelMyRegistration"
+      x-stage: "13"
+      x-access: "user"
+      responses:
+        "200":
+          description: "Операция выполнена."
+          content:
+            "application/json":
+              schema: {$ref: "#/components/schemas/Registration"}
+        "400": {$ref: "#/components/responses/Error400"}
+        "401": {$ref: "#/components/responses/Error401"}
+        "403": {$ref: "#/components/responses/Error403"}
+        "404": {$ref: "#/components/responses/Error404"}
+        "409": {$ref: "#/components/responses/Error409"}
+        "429": {$ref: "#/components/responses/Error429"}
+        "503": {$ref: "#/components/responses/Error503"}
+        default: {$ref: "#/components/responses/UnexpectedError"}
+components:
+  securitySchemes:
+
+    BearerAuth: {type: "http", scheme: "bearer", bearerFormat: "JWT"}
+  parameters:
+
+    Limit:
+      name: "limit"
+      in: "query"
+      schema: {type: "integer", minimum: 1, maximum: 100, default: 20}
+
+    Cursor:
+      name: "cursor"
+      in: "query"
+      schema: {type: "string", minLength: 1}
+      description: "Непрозрачный next_cursor из предыдущей страницы."
+  responses:
+
+    Error400:
+      description: "Параметр, курсор или тело запроса некорректны."
+      content:
+        "application/json":
+          schema: {$ref: "#/components/schemas/Problem"}
+
+    Error401:
+      description: "Сессия отсутствует, недействительна или истекла."
+      content:
+        "application/json":
+          schema: {$ref: "#/components/schemas/Problem"}
+      headers:
+        WWW-Authenticate:
+          description: "Ответ защищённой операции указывает схему Bearer."
+          schema: {type: "string"}
+
+    Error403:
+      description: "Недостаточно прав или действует бан."
+      content:
+        "application/json":
+          schema: {$ref: "#/components/schemas/Problem"}
+
+    Error404:
+      description: "Ресурс не найден."
+      content:
+        "application/json":
+          schema: {$ref: "#/components/schemas/Problem"}
+
+    Error409:
+      description: "Конфликт с текущим состоянием или занятостью зала."
+      content:
+        "application/json":
+          schema: {$ref: "#/components/schemas/Problem"}
+
+    Error503:
+      description: "Не удалось получить актуальные данные из зависимого сервиса."
+      content:
+        "application/json":
+          schema: {$ref: "#/components/schemas/Problem"}
+
+    UnexpectedError:
+      description: "Сбой обработки запроса."
+      content:
+        "application/json":
+          schema: {$ref: "#/components/schemas/Problem"}
+
+    Error429:
+      description: "Превышен лимит запросов. Лимитирование появляется на этапе 19."
+      headers:
+        Retry-After:
+          description: "Время ожидания в секундах, если оно известно."
+          schema: {type: "integer", minimum: 0}
+      content:
+        "application/json":
+          schema: {$ref: "#/components/schemas/Problem"}
+  schemas:
+
+    ID: {type: "string", minLength: 1, description: "Непрозрачный идентификатор."}
+
+    Problem:
+      type: "object"
+      required: ["code", "message"]
+      properties:
+        code: {type: "string", minLength: 1}
+        message: {type: "string", minLength: 1}
+        violations:
+          type: "array"
+          items: {$ref: "#/components/schemas/FieldViolation"}
+        conflicts:
+          type: "array"
+          items: {$ref: "#/components/schemas/HallConflict"}
+        registration_opens_at: {type: "string", format: "date-time"}
+        ban: {$ref: "#/components/schemas/Ban"}
+        request_id: {type: "string", minLength: 1}
+
+    FieldViolation:
+      type: "object"
+      required: ["field", "message"]
+      properties:
+        field:
+          type: "string"
+          description: "Путь в теле запроса в формате JSON Pointer либо имя параметра."
+        message: {type: "string"}
+
+    HallConflict:
+      type: "object"
+      required: ["game_id", "hall_id", "starts_at", "ends_at"]
+      properties:
+        game_id: {$ref: "#/components/schemas/ID"}
+        hall_id: {$ref: "#/components/schemas/ID"}
+        starts_at: {type: "string", format: "date-time"}
+        ends_at: {type: "string", format: "date-time"}
+
+    Role:
+      type: "string"
+      enum: ["user", "moderator", "admin"]
+
+    SkillLevel:
+      type: "string"
+      enum: ["beginner", "intermediate", "advanced"]
+
+    PlayerPosition:
+      type: "string"
+      enum: ["setter", "outside_hitter", "middle_blocker", "opposite", "libero"]
+
+    Credentials:
+      type: "object"
+      required: ["email", "password"]
+      properties:
+        email: {type: "string", format: "email"}
+        password:
+          type: "string"
+          minLength: 1
+          format: "password"
+          writeOnly: true
+          description: "Секрет пользователя, передаётся только по HTTPS."
+      additionalProperties: false
+
+    SignUp:
+      type: "object"
+      required: ["email", "password"]
+      properties:
+        email: {type: "string", format: "email"}
+        password:
+          type: "string"
+          minLength: 1
+          format: "password"
+          writeOnly: true
+          description: "Секрет пользователя, передаётся только по HTTPS."
+      additionalProperties: false
+
+    RefreshToken:
+      type: "object"
+      required: ["refresh_token"]
+      properties:
+        refresh_token: {type: "string", minLength: 1}
+      additionalProperties: false
+
+    Session:
+      type: "object"
+      required: ["access_token", "refresh_token", "expires_in"]
+      properties:
+        access_token: {type: "string"}
+        refresh_token: {type: "string"}
+        expires_in: {type: "integer", minimum: 1, description: "Срок жизни access-токена в секундах."}
+
+    Profile:
+      type: "object"
+      required: ["first_name", "last_name", "birth_date", "height_cm", "experience_years", "skill_level"]
+      properties:
+        first_name: {type: "string", minLength: 1}
+        last_name: {type: "string", minLength: 1}
+        birth_date: {type: "string", format: "date"}
+        height_cm: {type: "integer", minimum: 100, maximum: 250}
+        experience_years: {type: "integer", minimum: 0, maximum: 60}
+        skill_level: {$ref: "#/components/schemas/SkillLevel"}
+        position:
+          oneOf:
+            - {$ref: "#/components/schemas/PlayerPosition"}
+            - {type: "null"}
+
+    ProfileUpdate:
+      type: "object"
+      properties:
+        first_name: {type: "string", minLength: 1}
+        last_name: {type: "string", minLength: 1}
+        birth_date: {type: "string", format: "date"}
+        height_cm: {type: "integer", minimum: 100, maximum: 250}
+        experience_years: {type: "integer", minimum: 0, maximum: 60}
+        skill_level: {$ref: "#/components/schemas/SkillLevel"}
+        position:
+          oneOf:
+            - {$ref: "#/components/schemas/PlayerPosition"}
+            - {type: "null"}
+      additionalProperties: false
+      minProperties: 1
+
+    Account:
+      type: "object"
+      required: ["user_id", "email", "role", "telegram_linked"]
+      properties:
+        user_id: {$ref: "#/components/schemas/ID"}
+        email: {type: "string", format: "email"}
+        role: {$ref: "#/components/schemas/Role"}
+        profile: {$ref: "#/components/schemas/Profile"}
+        active_ban: {$ref: "#/components/schemas/Ban"}
+        telegram_linked: {type: "boolean"}
+
+    AssignRole:
+      type: "object"
+      required: ["role"]
+      properties:
+        role:
+          type: "string"
+          enum: ["user", "moderator"]
+      additionalProperties: false
+
+    BanRequest:
+      type: "object"
+      required: ["reason", "ends_at"]
+      properties:
+        reason: {type: "string", minLength: 1}
+        ends_at:
+          type: ["string", "null"]
+          format: "date-time"
+      additionalProperties: false
+
+    Ban:
+      type: "object"
+      required: ["reason", "ends_at"]
+      properties:
+        reason: {type: "string"}
+        ends_at:
+          type: ["string", "null"]
+          format: "date-time"
+
+    TelegramLink:
+      type: "object"
+      required: ["url", "expires_at"]
+      properties:
+        url: {type: "string", format: "uri"}
+        expires_at: {type: "string", format: "date-time"}
+
+    NotificationSettings:
+      type: "object"
+      required: ["telegram_enabled", "disabled_notification_types"]
+      properties:
+        telegram_enabled: {type: "boolean"}
+        disabled_notification_types:
+          type: "array"
+          items: {$ref: "#/components/schemas/NotificationType"}
+          uniqueItems: true
+      additionalProperties: false
+
+    NotificationType:
+      type: "string"
+      enum: ["game_updated", "game_cancelled", "registration_promoted", "registration_demoted", "teams_published", "teams_reset", "series_conflict", "user_banned", "user_unbanned", "game_reminder"]
+
+    VenueData:
+      type: "object"
+      required: ["name", "address"]
+      properties:
+        name: {type: "string", minLength: 1}
+        address: {type: "string", minLength: 1}
+      additionalProperties: false
+
+    CreateVenue:
+      type: "object"
+      required: ["name", "address"]
+      properties:
+        name: {type: "string", minLength: 1}
+        address: {type: "string", minLength: 1}
+        first_hall_name: {type: "string", minLength: 1, default: "Основной"}
+      additionalProperties: false
+
+    HallData:
+      type: "object"
+      required: ["name"]
+      properties:
+        name: {type: "string", minLength: 1}
+      additionalProperties: false
+
+    Hall:
+      type: "object"
+      required: ["hall_id", "venue_id", "name"]
+      properties:
+        hall_id: {$ref: "#/components/schemas/ID"}
+        venue_id: {$ref: "#/components/schemas/ID"}
+        name: {type: "string"}
+
+    Venue:
+      type: "object"
+      required: ["venue_id", "name", "address"]
+      properties:
+        venue_id: {$ref: "#/components/schemas/ID"}
+        name: {type: "string", minLength: 1}
+        address: {type: "string", minLength: 1}
+
+    VenuePage:
+      type: "object"
+      required: ["items"]
+      properties:
+        items:
+          type: "array"
+          items: {$ref: "#/components/schemas/Venue"}
+        next_cursor: {type: "string", minLength: 1, description: "Отсутствует на последней странице."}
+
+    HallPage:
+      type: "object"
+      required: ["items"]
+      properties:
+        items:
+          type: "array"
+          items: {$ref: "#/components/schemas/Hall"}
+        next_cursor: {type: "string", minLength: 1, description: "Отсутствует на последней странице."}
+
+    GameFormat:
+      type: "string"
+      default: "classic_6x6"
+      description: "Код из справочника games. Начальные форматы: classic_6x6, quads_4x4, beach_2x2."
+
+    GameFormatInfo:
+      type: "object"
+      required: ["code", "name", "team_size", "uses_player_positions"]
+      properties:
+        code: {$ref: "#/components/schemas/GameFormat"}
+        name: {type: "string"}
+        team_size: {type: "integer", minimum: 1}
+        uses_player_positions: {type: "boolean"}
+
+    GameCreate:
+      type: "object"
+      required: ["title", "hall_id", "price_kopecks", "main_limit", "starts_at", "ends_at"]
+      properties:
+        title: {type: "string", minLength: 1}
+        description: {type: "string"}
+        format: {$ref: "#/components/schemas/GameFormat"}
+        hall_id: {$ref: "#/components/schemas/ID"}
+        price_kopecks: {type: "integer", minimum: 0, format: "int64"}
+        main_limit: {type: "integer", minimum: 1}
+        starts_at: {type: "string", format: "date-time"}
+        ends_at: {type: "string", format: "date-time"}
+        registration_opens_at: {type: "string", format: "date-time"}
+      additionalProperties: false
+
+    GameUpdate:
+      type: "object"
+      properties:
+        title: {type: "string", minLength: 1}
+        description: {type: "string"}
+        format: {description: "Код из справочника games."}
+        hall_id: {$ref: "#/components/schemas/ID"}
+        price_kopecks: {type: "integer", minimum: 0, format: "int64"}
+        main_limit: {type: "integer", minimum: 1}
+        starts_at: {type: "string", format: "date-time"}
+        ends_at: {type: "string", format: "date-time"}
+        registration_opens_at: {type: "string", format: "date-time"}
+      additionalProperties: false
+      minProperties: 1
+
+    GameSummary:
+      type: "object"
+      required: ["game_id", "title", "format", "hall_id", "hall_name", "starts_at", "ends_at", "registration_opens_at", "status", "price_kopecks", "main_limit", "main_count", "waitlist_count"]
+      properties:
+        game_id: {$ref: "#/components/schemas/ID"}
+        title: {type: "string", minLength: 1}
+        format: {$ref: "#/components/schemas/GameFormat"}
+        hall_id: {$ref: "#/components/schemas/ID"}
+        hall_name: {type: "string"}
+        starts_at: {type: "string", format: "date-time"}
+        ends_at: {type: "string", format: "date-time"}
+        registration_opens_at: {type: "string", format: "date-time"}
+        status:
+          type: "string"
+          enum: ["scheduled", "in_progress", "finished", "cancelled"]
+        price_kopecks: {type: "integer", minimum: 0, format: "int64"}
+        main_limit: {type: "integer", minimum: 1}
+        main_count: {type: "integer", minimum: 0, description: "Размер основного состава."}
+        waitlist_count: {type: "integer", minimum: 0}
+
+    Game:
+      type: "object"
+      required: ["game_id", "title", "format", "hall_id", "hall_name", "starts_at", "ends_at", "registration_opens_at", "status", "price_kopecks", "main_limit", "main_count", "waitlist_count", "description", "owner_id"]
+      properties:
+        game_id: {$ref: "#/components/schemas/ID"}
+        title: {type: "string", minLength: 1}
+        format: {$ref: "#/components/schemas/GameFormat"}
+        hall_id: {$ref: "#/components/schemas/ID"}
+        hall_name: {type: "string"}
+        starts_at: {type: "string", format: "date-time"}
+        ends_at: {type: "string", format: "date-time"}
+        registration_opens_at: {type: "string", format: "date-time"}
+        status:
+          type: "string"
+          enum: ["scheduled", "in_progress", "finished", "cancelled"]
+        price_kopecks: {type: "integer", minimum: 0, format: "int64"}
+        main_limit: {type: "integer", minimum: 1}
+        main_count: {type: "integer", minimum: 0}
+        waitlist_count: {type: "integer", minimum: 0}
+        description: {type: "string"}
+        owner_id: {$ref: "#/components/schemas/ID"}
+        series_id: {$ref: "#/components/schemas/ID"}
+
+    GamePage:
+      type: "object"
+      required: ["items"]
+      properties:
+        items:
+          type: "array"
+          items: {$ref: "#/components/schemas/GameSummary"}
+        next_cursor: {type: "string", minLength: 1, description: "Отсутствует на последней странице."}
+
+    SeriesEnd:
+      oneOf:
+        - type: "object"
+          required: ["until"]
+          properties:
+            until: {type: "string", format: "date"}
+          additionalProperties: false
+        - type: "object"
+          required: ["occurrences"]
+          properties:
+            occurrences: {type: "integer", minimum: 1}
+          additionalProperties: false
+      description: "Последняя местная дата включительна либо предел числа запланированных повторений."
+
+    SeriesCreate:
+      type: "object"
+      required: ["title", "hall_id", "price_kopecks", "main_limit", "starts_at", "time_zone", "weekdays", "duration_minutes"]
+      properties:
+        title: {type: "string", minLength: 1}
+        description: {type: "string"}
+        format: {$ref: "#/components/schemas/GameFormat"}
+        hall_id: {$ref: "#/components/schemas/ID"}
+        price_kopecks: {type: "integer", minimum: 0, format: "int64"}
+        main_limit: {type: "integer", minimum: 1}
+        starts_at: {type: "string", format: "date-time"}
+        time_zone:
+          type: "string"
+          description: "Часовой пояс серии из базы IANA, например Europe/Moscow."
+        weekdays:
+          type: "array"
+          items:
+            type: "string"
+            enum: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+          minItems: 1
+          uniqueItems: true
+        duration_minutes: {type: "integer", minimum: 30, maximum: 360}
+        registration_opens_days_before: {type: "integer", minimum: 0, default: 7}
+        end: {$ref: "#/components/schemas/SeriesEnd"}
+      additionalProperties: false
+
+    SeriesSplit:
+      type: "object"
+      properties:
+        title: {type: "string", minLength: 1}
+        description: {type: "string"}
+        format: {description: "Код из справочника games."}
+        hall_id: {$ref: "#/components/schemas/ID"}
+        price_kopecks: {type: "integer", minimum: 0, format: "int64"}
+        main_limit: {type: "integer", minimum: 1}
+        starts_at: {type: "string", format: "date-time"}
+        time_zone:
+          type: "string"
+          description: "Часовой пояс серии из базы IANA, например Europe/Moscow."
+        weekdays:
+          type: "array"
+          items:
+            type: "string"
+            enum: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+          minItems: 1
+          uniqueItems: true
+        duration_minutes: {type: "integer", minimum: 30, maximum: 360}
+        registration_opens_days_before: {type: "integer", minimum: 0}
+        end:
+          oneOf:
+            - {$ref: "#/components/schemas/SeriesEnd"}
+            - {type: "null"}
+      additionalProperties: false
+      minProperties: 1
+
+    Series:
+      type: "object"
+      required: ["series_id", "owner_id", "status", "title", "description", "format", "hall_id", "price_kopecks", "main_limit", "starts_at", "time_zone", "weekdays", "duration_minutes", "registration_opens_days_before"]
+      properties:
+        series_id: {$ref: "#/components/schemas/ID"}
+        owner_id: {$ref: "#/components/schemas/ID"}
+        status:
+          type: "string"
+          enum: ["active", "ended", "cancelled"]
+        title: {type: "string", minLength: 1}
+        description: {type: "string"}
+        format: {$ref: "#/components/schemas/GameFormat"}
+        hall_id: {$ref: "#/components/schemas/ID"}
+        price_kopecks: {type: "integer", minimum: 0, format: "int64"}
+        main_limit: {type: "integer", minimum: 1}
+        starts_at: {type: "string", format: "date-time"}
+        time_zone:
+          type: "string"
+          description: "Часовой пояс серии из базы IANA, например Europe/Moscow."
+        weekdays:
+          type: "array"
+          items:
+            type: "string"
+            enum: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+          minItems: 1
+          uniqueItems: true
+        duration_minutes: {type: "integer", minimum: 30, maximum: 360}
+        registration_opens_days_before: {type: "integer", minimum: 0, default: 7}
+        end: {$ref: "#/components/schemas/SeriesEnd"}
+
+    SeriesPage:
+      type: "object"
+      required: ["items"]
+      properties:
+        items:
+          type: "array"
+          items: {$ref: "#/components/schemas/Series"}
+        next_cursor: {type: "string", minLength: 1, description: "Отсутствует на последней странице."}
+
+    Registration:
+      type: "object"
+      required: ["registration_id", "game_id", "user_id", "status"]
+      properties:
+        registration_id: {$ref: "#/components/schemas/ID"}
+        game_id: {$ref: "#/components/schemas/ID"}
+        user_id: {$ref: "#/components/schemas/ID"}
+        status:
+          type: "string"
+          enum: ["active", "cancelled", "attended", "no_show"]
+        roster:
+          type: "string"
+          enum: ["main", "waitlist"]
+          description: "Текущая группа активной записи."
+        waitlist_position:
+          type: "integer"
+          minimum: 1
+          description: "Позиция с 1. Присутствует у активной записи в листе ожидания."
+        cancellation_reason:
+          type: "string"
+          enum: ["self", "ban", "game_cancelled"]
+        late_cancel:
+          type: "boolean"
+          description: "Присутствует с причиной отмены. true означает, что самоотмена учитывается в дисциплине."
+
+    RosterEntry:
+      type: "object"
+      required: ["registration", "display_name"]
+      properties:
+        registration: {$ref: "#/components/schemas/Registration"}
+        display_name: {type: "string"}
+
+    RosterPage:
+      type: "object"
+      required: ["items"]
+      properties:
+        items:
+          type: "array"
+          items: {$ref: "#/components/schemas/RosterEntry"}
+        next_cursor: {type: "string", minLength: 1, description: "Отсутствует на последней странице."}
+
+    MyRegistration:
+      type: "object"
+      required: ["game", "registration"]
+      properties:
+        game: {$ref: "#/components/schemas/GameSummary"}
+        registration: {$ref: "#/components/schemas/Registration"}
+        team: {$ref: "#/components/schemas/MyTeam"}
+
+    MyRegistrationPage:
+      type: "object"
+      required: ["items"]
+      properties:
+        items:
+          type: "array"
+          items: {$ref: "#/components/schemas/MyRegistration"}
+        next_cursor: {type: "string", minLength: 1, description: "Отсутствует на последней странице."}
+
+    TeamPlayer:
+      type: "object"
+      required: ["user_id", "display_name", "substitute"]
+      properties:
+        user_id: {$ref: "#/components/schemas/ID"}
+        display_name: {type: "string"}
+        substitute: {type: "boolean"}
+
+    Team:
+      type: "object"
+      required: ["team_number", "players"]
+      properties:
+        team_number: {type: "integer", minimum: 1}
+        players:
+          type: "array"
+          items: {$ref: "#/components/schemas/TeamPlayer"}
+
+    MyTeam:
+      type: "object"
+      required: ["assignment_version", "team_number", "stale", "players"]
+      properties:
+        assignment_version: {type: "integer", minimum: 1}
+        team_number: {type: "integer", minimum: 1}
+        stale: {type: "boolean"}
+        players:
+          type: "array"
+          items: {$ref: "#/components/schemas/TeamPlayer"}
+
+    TeamAssignment:
+      type: "object"
+      required: ["assignment_version", "stale", "teams"]
+      properties:
+        assignment_version: {type: "integer", minimum: 1}
+        stale: {type: "boolean"}
+        teams:
+          type: "array"
+          items: {$ref: "#/components/schemas/Team"}
+
+    Attendance:
+      type: "object"
+      required: ["present"]
+      properties:
+        present: {type: "boolean"}
+      additionalProperties: false
+
+    DisciplineSummary:
+      type: "object"
+      required: ["window_starts_at", "window_ends_at", "attended_count", "no_show_count", "late_cancel_count"]
+      properties:
+        window_starts_at: {type: "string", format: "date-time"}
+        window_ends_at: {type: "string", format: "date-time"}
+        attended_count: {type: "integer", minimum: 0}
+        no_show_count: {type: "integer", minimum: 0}
+        late_cancel_count: {type: "integer", minimum: 0}
+
+    GameDetails:
+      type: "object"
+      required: ["game_id", "title", "format", "hall_id", "hall_name", "starts_at", "ends_at", "registration_opens_at", "status", "price_kopecks", "main_limit", "main_count", "waitlist_count", "description"]
+      properties:
+        game_id: {$ref: "#/components/schemas/ID"}
+        title: {type: "string", minLength: 1}
+        format: {$ref: "#/components/schemas/GameFormat"}
+        hall_id: {$ref: "#/components/schemas/ID"}
+        hall_name: {type: "string"}
+        starts_at: {type: "string", format: "date-time"}
+        ends_at: {type: "string", format: "date-time"}
+        registration_opens_at: {type: "string", format: "date-time"}
+        status:
+          type: "string"
+          enum: ["scheduled", "in_progress", "finished", "cancelled"]
+        price_kopecks: {type: "integer", minimum: 0, format: "int64"}
+        main_limit: {type: "integer", minimum: 1}
+        main_count: {type: "integer", minimum: 0}
+        waitlist_count: {type: "integer", minimum: 0}
+        description: {type: "string"}
+        series_id: {$ref: "#/components/schemas/ID"}
