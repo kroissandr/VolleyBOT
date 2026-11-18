@@ -55,5 +55,6 @@ Nginx даёт один внешний адрес REST API и направляе
 - [0002. Kafka и transactional outbox](adr/0002-kafka-and-transactional-outbox.md)
 - [0003. JWT, сессии и проверка прав](adr/0003-jwt-and-authorization.md)
 - [0004. Ограничение пересечений по залу](adr/0004-hall-overlap-exclusion.md)
+- [0005. Сохранение истории удалённых игр](adr/0005-retain-deleted-games.md)
 
 OpenAPI, protobuf и каталог событий входят в этап 04. Модель данных, миграции и план фикстур входят в этап 05.
